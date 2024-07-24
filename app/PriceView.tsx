@@ -1,10 +1,6 @@
 'use client'
 import useSWR from "swr";
-import {
-  ConnectKitProvider,
-  ConnectKitButton,
-  getDefaultConfig,
-} from "connectkit";
+import {ConnectKitButton} from "connectkit";
 import { useState, ChangeEvent } from "react";
 import { formatUnits, parseUnits } from "ethers";
 import {

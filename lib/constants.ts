@@ -109,14 +109,7 @@ export const POLYGON_TOKENS: Token[] = [
     logoURI:
       "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xc00e94Cb662C3520282E6f5717214004A7f26888/logo.png",
   },
-  {
-    chainId: 11155111,
-    name: "SepoliaETH",
-    symbol: "ETH",
-    decimals: 18,
-    address: "0xb50c2a93683b8da575cd8f93602f3db89a27a1e4", // Placeholder address for native tokens
-    logoURI: "https://ethereum.org/static/3c17ac21b6ff75ae11030ff1c6ec6d97/31987/eth-diamond-black.webp",
-  },
+
 ];
 
 export const POLYGON_TOKENS_BY_SYMBOL: Record<string, Token> = {
@@ -209,14 +202,6 @@ export const POLYGON_TOKENS_BY_SYMBOL: Record<string, Token> = {
     address: "0xada28E25D9f9c9dB6f84E8309c89e49676dA2161",
     logoURI:
       "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xc00e94Cb662C3520282E6f5717214004A7f26888/logo.png",
-  },
-  sepoliaeth: {
-    chainId: 11155111,
-    name: "SepoliaETH",
-    symbol: "ETH",
-    decimals: 18,
-    address: "0xb50c2a93683b8da575cd8f93602f3db89a27a1e4", // Placeholder address for native tokens
-    logoURI: "https://ethereum.org/static/3c17ac21b6ff75ae11030ff1c6ec6d97/31987/eth-diamond-black.webp",
   },
 };
 
@@ -312,12 +297,5 @@ export const POLYGON_TOKENS_BY_ADDRESS: Record<string, Token> = {
     logoURI:
       "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xc00e94Cb662C3520282E6f5717214004A7f26888/logo.png",
   },
-  "0xb50c2a93683b8da575cd8f93602f3db89a27a1e4": {
-    chainId: 11155111,
-    name: "SepoliaETH",
-    symbol: "ETH",
-    decimals: 18,
-    address: "0xb50c2a93683b8da575cd8f93602f3db89a27a1e4", // Placeholder address for native tokens
-    logoURI: "https://ethereum.org/static/3c17ac21b6ff75ae11030ff1c6ec6d97/31987/eth-diamond-black.webp",
-  },
+
 };

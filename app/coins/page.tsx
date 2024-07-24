@@ -1,13 +1,11 @@
 'use client'
 import { Input } from '@/components/ui/input'
-import { CoinList, HistoricalChart, SingleCoin, TrendingCoins } from '@/config/api'
-import Image from 'next/image'
 import Link from 'next/link'
 import React, { Suspense, useEffect, useState } from 'react'
 import { IoSearch } from "react-icons/io5";
 import { FaCoins, FaWallet } from "react-icons/fa6";
 import { Line } from 'react-chartjs-2';
-import { WagmiConfig, createConfig, configureChains, Chain } from "wagmi";
+import { WagmiConfig} from "wagmi";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -23,9 +21,7 @@ import { useRouter } from 'next/navigation'
 import { fetchChartData, fetchCoins, fetchTrendingCoins, numberWithCommas } from '../ApiFunctions'
 import {ConnectKitButton,ConnectKitProvider} from 'connectkit'
 import { config } from '../page'
-import { BsWallet2 } from "react-icons/bs";
 
-// Register the necessary Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,

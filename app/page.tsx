@@ -1,36 +1,19 @@
 'use client'
-import type { AppProps } from "next/app";
-import { WagmiConfig, createConfig, configureChains, Chain } from "wagmi";
+import { WagmiConfig, createConfig} from "wagmi";
 import {
   ConnectKitProvider,
   ConnectKitButton,
   getDefaultConfig,
 } from "connectkit";
-import { alchemyProvider } from '@wagmi/core/providers/alchemy';
-import { publicProvider } from '@wagmi/core/providers/public';
 import { useEffect, useState } from "react";
-import { mainnet, goerli, sepolia } from 'wagmi/chains';
 import Hero from "./Hero";
-import Image from "next/image";
 
-const { chains, publicClient } = configureChains(
-  [mainnet, goerli, sepolia],
-  [alchemyProvider({ apiKey: '694e17d7355746af9fb38735f691cd58' }), publicProvider()]
-);
 export const config = createConfig(
   getDefaultConfig({
-    // Required API Keys
     alchemyId: "694e17d7355746af9fb38735f691cd58",
     walletConnectProjectId: "562aea3f83c0e1cf67741ee500ec6821",
-
-    // Required
     appName: "0x Next.js Demo App",
-
-    // Optional
     appDescription: "A Next.js demo app for 0x Swap API and ConnectKit",
-
-    chains,
-    publicClient,
   })
 );
 
