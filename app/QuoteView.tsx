@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { formatUnits } from "ethers";
+import { ethers, formatUnits } from "ethers";
 import Fireworks from "react-canvas-confetti/dist/presets/fireworks";
 import {
   useSendTransaction,
@@ -90,6 +90,7 @@ export default function QuoteView({
 
   console.log("sellAmount:", quote?.sellAmount);
   console.log("decimals:", sellTokenInfo(chainId).decimals);
+  
 
   if (!quote) {
     return (
@@ -160,19 +161,20 @@ export default function QuoteView({
           console.log("submitting quote to blockchain");
           console.log("to", quote.to);
           console.log("value", quote.value);
+          
 
           sendTransaction &&
-            sendTransaction({
-              gas: quote?.gas,
-              to: quote?.to,
-              value: quote?.value,
-              data: quote?.data,
-              gasPrice: quote?.gasPrice,
-            });
+          sendTransaction({
+            gas: BigInt(quote?.gas),
+            to: quote.to as `0x${string}`,
+            value:  BigInt(quote.value),
+            data: quote.data as `0x${string}`,
+            gasPrice: BigInt(quote.gasPrice),
+          });
         }}
       >
         {isPending ? "Confirming..." : "Place Order"}
-      </button>
+      </button> 
       <br></br>
       <br></br>
       <br></br>
