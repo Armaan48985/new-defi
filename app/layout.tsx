@@ -1,6 +1,10 @@
 import type { Metadata } from 'next'
 import { Inter, Poppins } from 'next/font/google'
 import './globals.css'
+import Web3ModalProvider from '@/context/page'
+import { cookieToInitialState } from 'wagmi'
+import { config } from '@/config/page'
+import {headers} from 'next/headers'
 
 const inter = Inter({ subsets: ['latin'] })
 const poppins = Poppins({ subsets: ['latin'], weight: ['400', '600', '800'  ] })
@@ -15,9 +19,14 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const initialState = cookieToInitialState(config, headers().get("cookie"));
   return (
     <html lang="en">
-      <body className={poppins.className}>{children}</body>
+      <body className={`${poppins.className} bg-black`}>
+        <Web3ModalProvider initialState={initialState}>  
+          {children}
+        </Web3ModalProvider>
+        </body>
     </html>
   )
 }

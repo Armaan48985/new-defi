@@ -1,145 +1,218 @@
-'use client'
-import useSWR from "swr";
-import {ConnectKitButton} from "connectkit";
-import { useState, ChangeEvent } from "react";
+import {ConnectButton} from "@/components/ConnectButton";
+import { useEffect, useState, ChangeEvent } from "react";
 import { formatUnits, parseUnits } from "ethers";
 import {
-  erc20ABI,
-  useContractRead,
-  usePrepareContractWrite,
-  useContractWrite,
-  useWaitForTransaction,
+  useReadContract,
   useBalance,
-  type Address,
+  useSimulateContract,
+  useWriteContract,
+  useWaitForTransactionReceipt,
 } from "wagmi";
+import { erc20Abi, Address } from "viem";
 import {
   POLYGON_TOKENS,
   POLYGON_TOKENS_BY_SYMBOL,
-  POLYGON_TOKENS_BY_ADDRESS,
+  POLYGON_EXCHANGE_PROXY,
   MAX_ALLOWANCE,
-  exchangeProxy,
+  AFFILIATE_FEE,
+  FEE_RECIPIENT,
 } from "@/lib/constants";
+import ZeroExLogo from "../images/white-0x-logo.png";
+import Image from "next/image";
+import qs from "qs";
 
-interface PriceRequestParams {
-  sellToken: string;
-  buyToken: string;
-  buyAmount?: string;
-  sellAmount?: string;
-  takerAddress?: string;
-}
-
-const AFFILIATE_FEE = 0.01; // Percentage of the buyAmount that should be attributed to feeRecipient as affiliate fees
-const FEE_RECIPIENT = "0x75A94931B81d81C7a62b76DC0FcFAC77FbE1e917"; // The ETH address that should receive affiliate fees
-
-export const fetcher = ([endpoint, params]: [string, PriceRequestParams]) => {
-  const { sellAmount, buyAmount } = params;
-  if (!sellAmount && !buyAmount) return;
-  const qs = require('qs')
-  const query = qs.stringify(params);
-
-  return fetch(`${endpoint}?${query}`).then((res) => res.json());
+export const DEFAULT_BUY_TOKEN = (chainId: number) => {
+  if (chainId === 137) {
+    return "wmatic";
+  }
 };
 
 export default function PriceView({
   price,
+  takerAddress,
   setPrice,
   setFinalize,
-  takerAddress,
+  chainId,
 }: {
   price: any;
+  takerAddress: Address | undefined;
   setPrice: (price: any) => void;
   setFinalize: (finalize: boolean) => void;
-  takerAddress: Address | undefined;
+  chainId: number;
 }) {
+  const [sellToken, setSellToken] = useState("wmatic");
+  const [buyToken, setBuyToken] = useState("usdc");
   const [sellAmount, setSellAmount] = useState("");
   const [buyAmount, setBuyAmount] = useState("");
   const [tradeDirection, setTradeDirection] = useState("sell");
-  const [sellToken, setSellToken] = useState("wmatic");
-  const [buyToken, setBuyToken] = useState("dai");
+  const [error, setError] = useState([]);
 
   const handleSellTokenChange = (e: ChangeEvent<HTMLSelectElement>) => {
     setSellToken(e.target.value);
   };
-
   function handleBuyTokenChange(e: ChangeEvent<HTMLSelectElement>) {
     setBuyToken(e.target.value);
   }
 
-  const sellTokenDecimals = POLYGON_TOKENS_BY_SYMBOL[sellToken].decimals;
+  const exchangeProxy = (chainId: number): Address => {
+    if (chainId === 137) {
+      return POLYGON_EXCHANGE_PROXY;
+    }
+    return POLYGON_EXCHANGE_PROXY;
+  };
 
-  console.log(sellAmount, sellTokenDecimals, "<-");
+  const tokensByChain = (chainId: number) => {
+    if (chainId === 137) {
+      return POLYGON_TOKENS_BY_SYMBOL;
+    }
+    return POLYGON_TOKENS_BY_SYMBOL;
+  };
+
+  const sellTokenObject = tokensByChain(chainId)[sellToken];
+  const buyTokenObject = tokensByChain(chainId)[buyToken];
+
+  const sellTokenDecimals = sellTokenObject.decimals;
+  const buyTokenDecimals = buyTokenObject.decimals;
+  const sellTokenAddress = sellTokenObject.address;
+
   const parsedSellAmount =
     sellAmount && tradeDirection === "sell"
       ? parseUnits(sellAmount, sellTokenDecimals).toString()
       : undefined;
-
-  const buyTokenDecimals = POLYGON_TOKENS_BY_SYMBOL[buyToken].decimals;
 
   const parsedBuyAmount =
     buyAmount && tradeDirection === "buy"
       ? parseUnits(buyAmount, buyTokenDecimals).toString()
       : undefined;
 
-  // fetch price here
-  const { isLoading: isLoadingPrice } = useSWR(
-    [
-      "/api/price",
-      {
-        sellToken: POLYGON_TOKENS_BY_SYMBOL[sellToken].address,
-        buyToken: POLYGON_TOKENS_BY_SYMBOL[buyToken].address,
-        sellAmount: parsedSellAmount,
-        buyAmount: parsedBuyAmount,
-        takerAddress,
-        feeRecipient: FEE_RECIPIENT,
-        buyTokenPercentageFee: AFFILIATE_FEE,
-      },
-    ],
-    fetcher,
-    {
-      onSuccess: (data) => {
-        setPrice(data);
-        if (tradeDirection === "sell") {
-          console.log(formatUnits(data.buyAmount, buyTokenDecimals), data);
-          setBuyAmount(formatUnits(data.buyAmount, buyTokenDecimals));
-        } else {
-          setSellAmount(formatUnits(data.sellAmount, sellTokenDecimals));
-        }
-      },
-    }
-  );
+  // Fetch price data and set the buyAmount whenever the sellAmount changes
+  useEffect(() => {
+    const params = {
+      sellToken: sellTokenObject.address,
+      buyToken: buyTokenObject.address,
+      sellAmount: parsedSellAmount,
+      buyAmount: parsedBuyAmount,
+      takerAddress,
+      feeRecipient: FEE_RECIPIENT,
+      buyTokenPercentageFee: AFFILIATE_FEE,
+      feeRecipientTradeSurplus: FEE_RECIPIENT,
+    };
 
+    async function main() {
+      const response = await fetch(`/api/price?${qs.stringify(params)}`);
+      const data = await response.json();
+
+      if (data?.validationErrors?.length > 0) {
+        // error for sellAmount too low
+        setError(data.validationErrors);
+      } else {
+        setError([]);
+      }
+      if (data.buyAmount) {
+        setBuyAmount(formatUnits(data.buyAmount, buyTokenDecimals));
+        setPrice(data);
+      }
+    }
+
+    if (sellAmount !== "") {
+      main();
+    }
+  }, [
+    sellTokenObject.address,
+    buyTokenObject.address,
+    parsedSellAmount,
+    parsedBuyAmount,
+    chainId,
+    sellAmount,
+    setPrice,
+    FEE_RECIPIENT,
+    AFFILIATE_FEE,
+  ]);
+
+  // Hook for fetching balance information for specified token for a specific takerAddress
   const { data, isError, isLoading } = useBalance({
     address: takerAddress,
-    token: POLYGON_TOKENS_BY_SYMBOL[sellToken].address,
+    token: sellTokenObject.address,
   });
 
-  console.log(sellAmount);
+  console.log("taker sellToken balance: ", data);
 
-  const disabled =
+  const inSufficientBalance =
     data && sellAmount
       ? parseUnits(sellAmount, sellTokenDecimals) > data.value
       : true;
 
   return (
-    <form>
-      <p className="text-2xl text-gray-400 text-center font-bold mb-2">Polygon Network</p>
+    <div>
+      <div className="container mx-auto p-10 border-2 border-[#5773ff] shadow-md rounded-2xl">
+        <h1 className="text-4xl text-white mb-10">Swap</h1>
+        <div className=" p-4 rounded-md mb-3">
+          <label htmlFor="sell" className="text-gray-300 mb-2 mr-2 text-xl">
+            From
+          </label>
+          <section className="mt-4 flex items-start justify-center">
+            <label htmlFor="sell-select" className="sr-only"></label>
+            <Image
+              alt={sellToken}
+              className="h-9 w-9 mr-2 rounded-md"
+              src={POLYGON_TOKENS_BY_SYMBOL[sellToken].logoURI}
+              width={6}
+              height={6}
+            />
 
-      <div className="bg-[#0E0A1F] dark:bg-slate-800 p-6 rounded-xl mb-5 w-[500px]">
-        <section className="mt-4 flex items-start justify-center py-3">
-          <label htmlFor="sell-select" className="sr-only"></label>
-          <img
-            alt={sellToken}
-            className="h-14 w-14 mr-3 rounded-md"
-            src={POLYGON_TOKENS_BY_SYMBOL[sellToken].logoURI}
-          />
-          <div className="h-14">
+            <div className="h-14 sm:w-full sm:mr-2">
+              <select
+                value={sellToken}
+                name="sell-token-select"
+                id="sell-token-select"
+                className="mr-2 w-50 sm:w-full h-9 rounded-xl"
+                onChange={handleSellTokenChange}
+              >
+                {/* <option value="">--Choose a token--</option> */}
+                {POLYGON_TOKENS.map((token) => {
+                  return (
+                    <option
+                      key={token.address}
+                      value={token.symbol.toLowerCase()}
+                    >
+                      {token.symbol}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <label htmlFor="sell-amount" className="sr-only"></label>
+            <input
+              id="sell-amount"
+              value={sellAmount}
+              className="h-9 rounded-xl"
+              type="number"
+              onChange={(e) => {
+                setTradeDirection("sell");
+                setSellAmount(e.target.value);
+              }}
+            />
+          </section>
+          <label htmlFor="buy" className="text-gray-300 mb-2 mr-2 text-xl">
+            To
+          </label>
+          <section className="flex mb-6 mt-4 items-start justify-center">
+            <label htmlFor="buy-token" className="sr-only"></label>
+            <Image
+              alt={buyToken}
+              className="h-9 w-9 mr-2 rounded-md"
+              src={POLYGON_TOKENS_BY_SYMBOL[buyToken].logoURI}
+              width={6}
+              height={6}
+            />
             <select
-              value={sellToken}
-              name="sell-token-select"
-              id="sell-token-select"
-              className="mr-2 h-12 p-2 bg-[#171738] outline-none border-none rounded-xl"
-              onChange={handleSellTokenChange}
+              name="buy-token-select"
+              id="buy-token-select"
+              value={buyToken}
+              className="mr-2 w-50 sm:w-full h-9 rounded-xl"
+              onChange={(e) => handleBuyTokenChange(e)}
             >
+              {/* <option value="">--Choose a token--</option> */}
               {POLYGON_TOKENS.map((token) => {
                 return (
                   <option
@@ -151,182 +224,123 @@ export default function PriceView({
                 );
               })}
             </select>
-          </div>
-          <label htmlFor="sell-amount" className="sr-only"></label>
-          <input
-            id="sell-amount"
-            value={sellAmount}
-            className="h-12 w-full rounded-xl bg-[#171738] outline-none pl-4"
-            style={{ border: "1px solid black" }}
-            onChange={(e) => {
-              setTradeDirection("sell");
-              setSellAmount(e.target.value);
-            }}
-          />
-        </section>
-        <section className="flex-center mb-6 mt-4 w-full py-3">
-          <label htmlFor="buy-token" className="sr-only"></label>
-          <img
-            alt={buyToken}
-            className="h-14 w-14 mr-3 rounded-md"
-            src={POLYGON_TOKENS_BY_SYMBOL[buyToken].logoURI}
-          />
-          <select
-            name="buy-token-select"
-            id="buy-token-select"
-            value={buyToken}
-            className="mr-2 h-12 p-2 bg-[#171738] outline-none rounded-xl"
-            onChange={(e) => handleBuyTokenChange(e)}
-          >
-            {POLYGON_TOKENS.map((token) => {
-              return (
-                <option key={token.address} value={token.symbol.toLowerCase()}>
-                  {token.symbol}
-                </option>
-              );
-            })}
-          </select>
-          <label htmlFor="buy-amount" className="sr-only"></label>
-          <input
-            id="buy-amount"
-            value={buyAmount}
-            className="h-12 w-full rounded-xl bg-[#171738] outline-none pl-4"
-            style={{ border: "1px solid black" }}
-            disabled
-            onChange={(e) => {
-              setTradeDirection("buy");
-              setBuyAmount(e.target.value);
-            }}
-          />
-        </section>
-        <div className="text-slate-400">
-          {price && price.grossBuyAmount
-            ? "Affiliate Fee: " +
-              Number(
-                formatUnits(
-                  BigInt(price.grossBuyAmount),
-                  POLYGON_TOKENS_BY_SYMBOL[buyToken].decimals
-                )
-              ) *
-                AFFILIATE_FEE +
-              " " +
-              POLYGON_TOKENS_BY_SYMBOL[buyToken].symbol
-            : null}
+            <label htmlFor="buy-amount" className="sr-only"></label>
+            <input
+              id="buy-amount"
+              value={buyAmount}
+              className="h-9 rounded-xl bg-white cursor-not-allowed"
+              type="number"
+              style={{ border: "1px solid black" }}
+              disabled
+              onChange={(e) => {
+                setTradeDirection("buy");
+                setBuyAmount(e.target.value);
+              }}
+            />
+          </section>
         </div>
-
-        <div className="h-5">
-          {isLoadingPrice && (
-          <div className="text-center mt-2 text-green-300">Fetching the best price...</div>
+        {takerAddress ? (
+          <ApproveOrReviewButton
+            sellTokenAddress={POLYGON_TOKENS_BY_SYMBOL[sellToken].address}
+            takerAddress={takerAddress}
+            onClick={() => {
+              setFinalize(true);
+            }}
+            disabled={inSufficientBalance}
+          />
+        ) : (
+          <ConnectButton />
         )}
-        </div>
       </div>
-
-      {takerAddress ? (
-        <ApproveOrReviewButton
-          sellTokenAddress={POLYGON_TOKENS_BY_SYMBOL[sellToken].address}
-          takerAddress={takerAddress}
-          onClick={() => {
-            setFinalize(true);
-          }}
-          disabled={disabled}
-        />
-      ) : (
-        <ConnectKitButton.Custom>
-          {({
-            isConnected,
-            isConnecting,
-            show,
-            hide,
-            address,
-            ensName,
-            chain,
-          }:any) => {
-            return (
-              <button
-                onClick={show}
-                type="button"
-                className="bg-[#0E0A1F] hover:bg-[#171238] text-gray-200 font-bold py-4 px-4 rounded-xl w-full"
-              >
-                {isConnected ? address : "Connect Wallet"}
-              </button>
-            );
-          }}
-        </ConnectKitButton.Custom>
-      )}
-
-    
-    </form>
+    </div>
   );
-}
 
-function ApproveOrReviewButton({
-  takerAddress,
-  onClick,
-  sellTokenAddress,
-  disabled,
-}: {
-  takerAddress: Address;
-  onClick: () => void;
-  sellTokenAddress: Address;
-  disabled?: boolean;
-}) {
-  // 1. Read from erc20, does spender (0x Exchange Proxy) have allowance?
-  const { data: allowance, refetch } = useContractRead({
-    address: sellTokenAddress,
-    abi: erc20ABI,
-    functionName: "allowance",
-    args: [takerAddress, exchangeProxy],
-  });
+  function ApproveOrReviewButton({
+    takerAddress,
+    onClick,
+    sellTokenAddress,
+    disabled,
+  }: {
+    takerAddress: Address;
+    onClick: () => void;
+    sellTokenAddress: Address;
+    disabled?: boolean;
+  }) {
+    // 1. Read from erc20, does spender (0x Exchange Proxy) have allowance?
+    const { data: allowance, refetch } = useReadContract({
+      address: sellTokenAddress,
+      abi: erc20Abi,
+      functionName: "allowance",
+      args: [takerAddress, exchangeProxy(chainId)],
+    });
 
-  // 2. (only if no allowance): write to erc20, approve 0x Exchange Proxy to spend max integer
-  const { config } = usePrepareContractWrite({
-    address: sellTokenAddress,
-    abi: erc20ABI,
-    functionName: "approve",
-    args: [exchangeProxy, MAX_ALLOWANCE],
-  });
+    // 2. (only if no allowance): write to erc20, approve a token allowance for 0x Exchange Proxy
+    const { data } = useSimulateContract({
+      address: sellTokenAddress,
+      abi: erc20Abi,
+      functionName: "approve",
+      args: [exchangeProxy(chainId), MAX_ALLOWANCE],
+    });
 
-  const {
-    data: writeContractResult,
-    writeAsync: approveAsync,
-    error,
-  } = useContractWrite(config);
+    // Define useWriteContract for the 'approve' operation
+    const {
+      data: writeContractResult,
+      writeContractAsync: writeContract,
+      error,
+    } = useWriteContract();
 
-  const { isLoading: isApproving } = useWaitForTransaction({
-    hash: writeContractResult ? writeContractResult.hash : undefined,
-    onSuccess(data) {
-      refetch();
-    },
-  });
+    // useWaitForTransactionReceipt to wait for the approval transaction to complete
+    const { data: approvalReceiptData, isLoading: isApproving } =
+      useWaitForTransactionReceipt({
+        hash: writeContractResult,
+      });
 
-  if (error) {
-    return <div>Something went wrong: {error.message}</div>;
-  }
+    // Call `refetch` when the transaction succeeds
+    useEffect(() => {
+      if (data) {
+        refetch();
+      }
+    }, [data, refetch]);
 
-  if (allowance?.toString() === "0" && approveAsync) {
+    if (error) {
+      return <div>Something went wrong: {error.message}</div>;
+    }
+
+    // Need to figure out approval button
+    if (allowance === 0n) {
+      return (
+        <>
+          <button
+            type="button"
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full"
+            onClick={async () => {
+              await writeContract({
+                abi: erc20Abi,
+                address: sellTokenAddress,
+                functionName: "approve",
+                args: [exchangeProxy(chainId), MAX_ALLOWANCE],
+              });
+              refetch();
+            }}
+          >
+            {isApproving ? "Approving…" : "Approve"}
+          </button>
+        </>
+      );
+    }
+
     return (
-      <>
-        <button
-          type="button"
-          className="bg-[#0E0A1F] hover:bg-[#171238] text-white font-bold py-4 px-4 rounded-xl w-full"
-          onClick={async () => {
-            const writtenValue = await approveAsync();
-          }}
-        >
-          {isApproving ? "Approving…" : "Approve"}
-        </button>
-      </>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          // fetch data, when finished, show quote view
+          setFinalize(true);
+        }}
+        className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-700 disabled:opacity-25"
+      >
+        {disabled ? "Insufficient Balance" : "Review Trade"}
+      </button>
     );
   }
-
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className="bg-[#0E0A1F] text-gray-600 cursor-not-allowed font-bold py-4 px-4 rounded-xl w-full"
-    >
-      {disabled ? "Insufficient Balance" : "Review Trade"}
-    </button>
-  );
 }

@@ -1,134 +1,201 @@
-import useSWR from "swr";
-import Image from "next/image";
+import { useEffect, useRef } from "react";
 import { formatUnits } from "ethers";
+import Fireworks from "react-canvas-confetti/dist/presets/fireworks";
 import {
-  useAccount,
   useSendTransaction,
-  usePrepareSendTransaction,
-  type Address,
+  useWaitForTransactionReceipt,
+  type BaseError,
 } from "wagmi";
-import { POLYGON_TOKENS_BY_ADDRESS } from "@/lib/constants";
-import { PriceResponse, QuoteResponse } from "./api/types";
-import { fetcher } from "./PriceView";
-
-const AFFILIATE_FEE = 0.01; // Percentage of the buyAmount that should be attributed to feeRecipient as affiliate fees
-const FEE_RECIPIENT = "0x75A94931B81d81C7a62b76DC0FcFAC77FbE1e917"; // The ETH address that should receive affiliate fees
+import { Address } from "viem";
+import type { PriceResponse, QuoteResponse } from "@/app/api/types";
+import {
+  POLYGON_TOKENS_BY_ADDRESS,
+  AFFILIATE_FEE,
+  FEE_RECIPIENT,
+} from "@/lib/constants";
+import Image from "next/image";
+import qs from "qs";
+import Link from "next/link";
 
 export default function QuoteView({
+  takerAddress,
   price,
   quote,
   setQuote,
-  takerAddress,
+  chainId,
 }: {
+  takerAddress: Address | undefined;
   price: PriceResponse;
   quote: QuoteResponse | undefined;
   setQuote: (price: any) => void;
-  takerAddress: Address | undefined;
+  chainId: number;
 }) {
-  const sellTokenInfo =
-    POLYGON_TOKENS_BY_ADDRESS[price.sellTokenAddress.toLowerCase()];
-
-  const buyTokenInfo =
-    POLYGON_TOKENS_BY_ADDRESS[price.buyTokenAddress.toLowerCase()];
-
-  // fetch quote here
-  const { address } = useAccount();
-
-  const { isLoading: isLoadingPrice } = useSWR(
-    [
-      "/api/quote",
-      {
-        sellToken: price.sellTokenAddress,
-        buyToken: price.buyTokenAddress,
-        sellAmount: price.sellAmount,
-        // buyAmount: TODO if we want to support buys,
-        takerAddress,
-        feeRecipient: FEE_RECIPIENT,
-        buyTokenPercentageFee: AFFILIATE_FEE,
-      },
-    ],
-    fetcher,
-    {
-      onSuccess: (data) => {
-        setQuote(data);
-        console.log("quote", data);
-        console.log(formatUnits(data.buyAmount, buyTokenInfo.decimals), data);
-      },
+  const sellTokenInfo = (chainId: number) => {
+    switch (chainId) {
+      case 137:
+        return POLYGON_TOKENS_BY_ADDRESS[price.sellTokenAddress.toLowerCase()];
+      default:
+        return POLYGON_TOKENS_BY_ADDRESS[price.buyTokenAddress.toLowerCase()];
     }
-  );
+  };
 
-  const { config } = usePrepareSendTransaction({
-    to: quote?.to, // The address of the contract to send call data to, in this case 0x Exchange Proxy
-    data: quote?.data, // The call data required to be sent to the to contract address.
-  });
+  const buyTokenInfo = (chainId: number) => {
+    switch (chainId) {
+      case 137:
+        return POLYGON_TOKENS_BY_ADDRESS[price.buyTokenAddress.toLowerCase()];
+      default:
+        return POLYGON_TOKENS_BY_ADDRESS[price.buyTokenAddress.toLowerCase()];
+    }
+  };
 
-  const { sendTransaction } = useSendTransaction(config);
+  // Fetch quote data
+  useEffect(() => {
+    const params = {
+      sellToken: price.sellTokenAddress,
+      buyToken: price.buyTokenAddress,
+      sellAmount: price.sellAmount,
+      takerAddress,
+      feeRecipient: FEE_RECIPIENT,
+      buyTokenPercentageFee: AFFILIATE_FEE,
+      feeRecipientTradeSurplus: FEE_RECIPIENT,
+    };
+
+    async function main() {
+      const response = await fetch(`/api/quote?${qs.stringify(params)}`);
+      const data = await response.json();
+      setQuote(data);
+    }
+    main();
+  }, [
+    price.sellTokenAddress,
+    price.buyTokenAddress,
+    price.sellAmount,
+    takerAddress,
+    setQuote,
+    FEE_RECIPIENT,
+    AFFILIATE_FEE,
+  ]);
+
+  const {
+    data: hash,
+    isPending,
+    error,
+    sendTransaction,
+  } = useSendTransaction();
+
+  const { isLoading: isConfirming, isSuccess: isConfirmed } =
+    useWaitForTransactionReceipt({
+      hash,
+    });
+
+  console.log("sellAmount:", quote?.sellAmount);
+  console.log("decimals:", sellTokenInfo(chainId).decimals);
 
   if (!quote) {
-    return <div>Getting best quote...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 max-w-5xl mx-auto">
+        <p className="text-xl text-white">Getting the Best Quote</p>
+        <div className=" text-center mx-auto">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-white mx-auto"></div>
+        </div>
+      </div>
+    );
   }
-  
+
+  console.log("quote", quote);
+
   return (
     <div className="p-3 mx-auto max-w-screen-sm ">
-      <form>
-        <div className="bg-slate-200 dark:bg-slate-800 p-4 rounded-sm mb-3">
-          <div className="text-xl mb-2 text-white">You pay</div>
+      <form className="flex flex-col gap-3 items-center justify-center">
+        <div className=" p-4 mb-3 border-2 border-[#5773ff] shadow-md rounded-2xl w-full">
+          <div className="text-xl mb-2 text-white">Send</div>
           <div className="flex items-center text-lg sm:text-3xl text-white">
-            <img
-              alt={sellTokenInfo.symbol}
+            <Image
+              alt={sellTokenInfo(chainId).symbol}
               className="h-9 w-9 mr-2 rounded-md"
-              src={sellTokenInfo.logoURI}
+              src={sellTokenInfo(chainId || 137)?.logoURI}
+              width={9}
+              height={9}
             />
-            <span>{formatUnits(quote.sellAmount, sellTokenInfo.decimals)}</span>
-            <div className="ml-2">{sellTokenInfo.symbol}</div>
+            <span>
+              {formatUnits(quote.sellAmount, sellTokenInfo(chainId).decimals)}
+            </span>
+            <div className="ml-2">{sellTokenInfo(chainId).symbol}</div>
           </div>
         </div>
+        <Image
+          src={"/arrow.svg"}
+          width={80}
+          height={80}
+          className="rotate-180 w-10 h-10 "
+          alt="a down arrow"
+        />
 
-        <div className="bg-slate-200 dark:bg-slate-800 p-4 rounded-sm mb-3">
-          <div className="text-xl mb-2 text-white">You receive</div>
+        <div className="border-2 border-[#5773ff] shadow-md rounded-2xl p-4  mb-3 w-full">
+          <div className="text-xl mb-2 text-white">Receive</div>
           <div className="flex items-center text-lg sm:text-3xl text-white">
-            <img
-              alt={
-                POLYGON_TOKENS_BY_ADDRESS[price.buyTokenAddress.toLowerCase()]
-                  .symbol
-              }
-              className="h-9 w-9 mr-2 rounded-md"
+            <Image
+              alt={"a cryptocoin image"}
+              className="h-9 w-9 mr-2 rounded-full"
               src={
                 POLYGON_TOKENS_BY_ADDRESS[price.buyTokenAddress.toLowerCase()]
                   .logoURI
               }
+              width={9}
+              height={9}
             />
-            <span>{formatUnits(quote.buyAmount, buyTokenInfo.decimals)}</span>
-            <div className="ml-2">{buyTokenInfo.symbol}</div>
-          </div>
-        </div>
-        <div className="bg-slate-200 dark:bg-slate-800 p-4 rounded-sm mb-3">
-          <div className="text-slate-400">
-            {quote && quote.grossBuyAmount
-              ? "Affiliate Fee: " +
-                Number(
-                  formatUnits(
-                    BigInt(quote.grossBuyAmount),
-                    buyTokenInfo.decimals
-                  )
-                ) *
-                  AFFILIATE_FEE +
-                " " +
-                buyTokenInfo.symbol
-              : null}
+
+            <span>
+              {formatUnits(quote.buyAmount, buyTokenInfo(chainId).decimals)}
+            </span>
+            <div className="ml-2">{buyTokenInfo(chainId).symbol}</div>
           </div>
         </div>
       </form>
 
       <button
-        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full"
+        className="bg-[#5773ff] hover:bg-[#647eff] text-white font-bold py-2 px-4 rounded-lg mt-5 w-full"
+        disabled={isPending}
         onClick={() => {
           console.log("submitting quote to blockchain");
-          sendTransaction && sendTransaction();
+          console.log("to", quote.to);
+          console.log("value", quote.value);
+
+          sendTransaction &&
+            sendTransaction({
+              gas: quote?.gas,
+              to: quote?.to,
+              value: quote?.value,
+              data: quote?.data,
+              gasPrice: quote?.gasPrice,
+            });
         }}
       >
-        Place Order
+        {isPending ? "Confirming..." : "Place Order"}
       </button>
+      <br></br>
+      <br></br>
+      <br></br>
+      {isConfirming && (
+        <div className="text-center text-white text-xl flex flex-col items-center justify-center gap-5">
+          <span>Waiting for confirmation ⏳ ...</span>
+        </div>
+      )}
+      {isConfirmed && (
+        <div className="text-center text-white text-xl flex flex-col gap-2">
+          <span>Transaction Confirmed! 🎉 </span>
+          <Fireworks autorun={{ speed: 2, duration: 11000 }} />
+          <Link
+            href={`https://polygonscan.com/tx/${hash}`}
+            className="underline text-blue-300"
+          >
+            Check Polygonscan
+          </Link>
+        </div>
+      )}
+      {error && (
+        <div>Error: {(error as BaseError).shortMessage || error.message}</div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,5 @@
-import { Address } from "wagmi";
+import { Address } from "viem";
 
-// https://docs.0x.org/0x-api-swap/api-references/get-swap-v1-price#response
 export interface PriceResponse {
   chainId: number;
   price: string;
@@ -23,7 +22,6 @@ export interface PriceResponse {
   expectedSlippage: string | null;
 }
 
-// https://docs.0x.org/0x-api-swap/api-references/get-swap-v1-quote#response
 export interface QuoteResponse {
   chainId: number;
   price: string;

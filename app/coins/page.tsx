@@ -20,7 +20,6 @@ import { MdKeyboardDoubleArrowRight } from "react-icons/md";
 import { useRouter } from 'next/navigation'
 import { fetchChartData, fetchCoins, fetchTrendingCoins, numberWithCommas } from '../ApiFunctions'
 import {ConnectKitButton,ConnectKitProvider} from 'connectkit'
-import { config } from '../page'
 
 ChartJS.register(
   CategoryScale,
@@ -103,7 +102,6 @@ const Page = () => {
           </h1>
 
           <span className='absolute top-16 right-14'>
-          <WagmiConfig config={config}>
             <ConnectKitProvider>
             <ConnectKitButton.Custom>
                 {({ isConnected, isConnecting, show, hide, address, ensName, chain }:any) => {
@@ -121,7 +119,6 @@ const Page = () => {
                 }}
               </ConnectKitButton.Custom>
             </ConnectKitProvider>
-          </WagmiConfig>
           </span>
         </div>
 
