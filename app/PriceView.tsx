@@ -144,10 +144,10 @@ export default function PriceView({
 
   return (
     <div>
-      <div className="container mx-auto p-10 border-2 border-[#5773ff] shadow-md rounded-2xl">
-        <h1 className="text-4xl text-white mb-10">Swap</h1>
-        <div className=" p-4 rounded-md mb-3">
-          <label htmlFor="sell" className="text-gray-300 mb-2 mr-2 text-xl">
+      <div className="container mx-auto p-10 bg-[#0A171F] shadow-md rounded-2xl">
+        <h1 className="text-4xl text-white mb-8">Swap</h1>
+        <div className="p-2 rounded-md mb-3">
+          <label htmlFor="sell" className="text-gray-400 mb-2 mr-2 text-lg">
             From
           </label>
           <section className="mt-4 flex items-start justify-center">
@@ -193,7 +193,7 @@ export default function PriceView({
               }}
             />
           </section>
-          <label htmlFor="buy" className="text-gray-300 mb-2 mr-2 text-xl">
+          <label htmlFor="buy" className="text-gray-400 mb-2 mr-2 text-lg">
             To
           </label>
           <section className="flex mb-6 mt-4 items-start justify-center">
