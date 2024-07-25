@@ -1,7 +1,7 @@
 'use client'
 import React from 'react'
 import { useState } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId } from "wagmi";
 import QuoteView from "./QuoteView";
 import PriceView from "./PriceView";
 import { PriceResponse } from "./api/types";
@@ -14,6 +14,8 @@ const Hero = () => {
     const [price, setPrice] = useState<PriceResponse | undefined>();
     const [quote, setQuote] = useState();
     const { address } = useAccount();
+    const chainId = useChainId() || 137;
+    console.log("chainId: ", chainId);
   
     return (
       <main className={`w-full min-h-screen flex noto-font flex-col`}>
@@ -29,6 +31,7 @@ const Hero = () => {
                     price={price}
                     quote={quote}
                     setQuote={setQuote}
+                    chainId={chainId}
                   />
                 ) : (
                   <PriceView
@@ -36,6 +39,7 @@ const Hero = () => {
                     price={price}
                     setPrice={setPrice}
                     setFinalize={setFinalize}
+                    chainId={chainId}
                   />
                 )}
             </div>
