@@ -17,7 +17,6 @@ import {
 } from 'chart.js';
 import { Button } from '@/components/ui/button'
 
-// Register the necessary Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -39,13 +38,10 @@ const Page = () => {
   const fetchCoinData = async () => {
     try {
       const coinId = path.split('/coins/')[1].toLowerCase();
-      console.log("Fetching data for coin ID:", coinId);
 
       const data = await fetchSingleCoin(coinId);
-      console.log("Data fetched:", data);
 
-      if (data && Object.keys(data).length > 0) { // Changed condition to check if data is an object and has keys
-        console.log("Setting coin data");
+      if (data && Object.keys(data).length > 0) {
         setCoinData(data);
         setLoading(false);
       } else {
@@ -60,26 +56,6 @@ const Page = () => {
     fetchCoinData();
   }, []);
 
-
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (loading) {
-        console.warn('Loading is taking longer than expected, reloading the page...');
-        window.location.reload();
-      }
-    }, 5000);
-
-    return () => clearTimeout(timeoutId); 
-  }, [loading]);
-
-  // Simulate loading
-  useEffect(() => {
-    const fakeLoading = setTimeout(() => {
-      setLoading(false);
-    }, 5000); // Simulate 5 seconds of loading
-
-    return () => clearTimeout(fakeLoading);
-  }, []);
 
   useEffect(() => {
     if (!coinData) return;

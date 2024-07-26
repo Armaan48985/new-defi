@@ -47,3 +47,49 @@
       transform: translateX(0);
     }
   }
+
+
+
+/* Webkit Browsers (Chrome, Safari) */
+::-webkit-scrollbar {
+  width: 12px;  /* Width of the vertical scrollbar */
+  height: 12px; /* Height of the horizontal scrollbar */
+}
+
+::-webkit-scrollbar-track {
+  background: #2a2a2a;  /* Background color of the scrollbar track */
+  border-radius: 10px;  /* Rounded corners for the track */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #5773ff; /* Color of the draggable thumb */
+  border-radius: 10px;  /* Rounded corners for the thumb */
+  border: 2px solid #2a2a2a;  /* Adds a border to create some padding */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #647eff; /* Color of the thumb when hovered */
+}
+
+/* Hide the scrollbar arrows */
+::-webkit-scrollbar-button {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* Hide the corners of the scrollbar */
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox */
+html {
+  scrollbar-width: thin; /* Sets the width of the scrollbar */
+  scrollbar-color: #234257 #2a2a2a; /* Sets the color of the thumb and track */
+}
+
+/* For webkit (Chrome, Safari) fallback */
+body {
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling for webkit browsers */
+}

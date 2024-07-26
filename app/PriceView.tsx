@@ -144,7 +144,7 @@ export default function PriceView({
 
   return (
     <div>
-      <div className="container mx-auto p-10 bg-[#0A171F] shadow-md rounded-2xl">
+      <div className="container mx-auto p-10 bg-[#10102b]  shadow-md rounded-2xl">
         <h1 className="text-4xl text-white mb-8">Swap</h1>
         <div className="p-2 rounded-md mb-3">
           <label htmlFor="sell" className="text-gray-400 mb-2 mr-2 text-lg">

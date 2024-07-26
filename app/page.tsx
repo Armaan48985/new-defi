@@ -15,9 +15,8 @@ export default function App() {
 
   return (
     <div>
-       
-          <div className="w-full flex-between py-5 px-10 bg-[#0F232F] fixed top-0 left-0">
-            <h1 className="text-gray-300 playwrite-font text-xl">Crypto tracker</h1>
+          <div className="w-full flex-between py-5 px-16 bg-[#0c0c20] fixed top-0 left-0">
+            <h1 className="text-gray-400 playwrite-font text-xl">Crypto tracker</h1>
             <ConnectButton/>
           </div>
           {mounted && <Hero />}
